@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# SMS Authentication Linking with Email in Firebase
+
+...
+
+## About the Project
+
+...
+
+## Key Features
+
+...
 
 ## Getting Started
 
-First, run the development server:
+To get this project up and running on your local machine, follow these steps:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Prerequisites
+
+Node.js installed on your system
+A Firebase project for accessing Firebase services
+
+## Installation
+
+Clone the repository:
+```
+git clone https://github.com/jacklion710/firebase-link-email-and-sms
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Navigate to the project directory:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+cd firebase-link-email-and-sms
+Install dependencies:
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+```
+npm install
+```
 
-## Learn More
+Set up Firebase configuration:
 
-To learn more about Next.js, take a look at the following resources:
+Create a .env.local file in the root directory and add your Firebase project configuration keys:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+NEXT_PUBLIC_API_KEY=your_api_key
+NEXT_PUBLIC_AUTH_DOMAIN=your_auth_domain
+NEXT_PUBLIC_PROJECT_ID=your_project_id
+NEXT_PUBLIC_STORAGE_BUCKET=your_storage_bucket
+NEXT_PUBLIC_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_APP_ID=your_app_id
+NEXT_PUBLIC_MEASUREMENT_ID=your_measurement_id
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your_recaptcha_site_key
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+Run the development server:
 
-## Deploy on Vercel
+```
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Navigate to http://localhost:3000 to see the application in action.
