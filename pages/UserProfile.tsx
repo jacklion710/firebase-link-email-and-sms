@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { 
+  useEffect, 
+  useState 
+} from 'react';
 import {
   Box,
   Flex,
@@ -6,9 +9,12 @@ import {
   Heading,
   Stack,
   ChakraProvider,
+  Button
 } from '@chakra-ui/react';
+import { signOut } from '../utils/firebase';
 import { auth } from '../utils/firebase'
-import { getAuth } from 'firebase/auth';
+import { useRouter } from 'next/router';
+import useAuth from '@/components/useAuth';
 
 interface UserProviderData {
     providerId: string;
@@ -20,6 +26,14 @@ interface UserProviderData {
 
 const UserProfile = () => {
   const [userInfo, setUserInfo] = useState<UserProviderData[]>([]);
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/Login'); 
+    }
+  }, [user, loading, router]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
@@ -38,6 +52,17 @@ const UserProfile = () => {
     // Clean up the observer
     return () => unsubscribe();
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // Redirect to login page after successful logout
+      router.push('/Login'); // Adjust the path as necessary
+    } catch (error) {
+      console.error("Logout failed", error);
+      // Handle errors here, such as displaying a notification
+    }
+  };
 
   return (
     <ChakraProvider>
@@ -59,6 +84,7 @@ const UserProfile = () => {
                   <Text>Name: {info.name || 'N/A'}</Text>
                   <Text>Email: {info.email || 'N/A'}</Text>
                   <Text>Phone: {info.phoneNumber || 'N/A'}</Text>
+                  <Button colorScheme="blue" onClick={handleLogout}>Log Out</Button>
                 </Box>
               ))
             ) : (
