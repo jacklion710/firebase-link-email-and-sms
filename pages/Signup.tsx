@@ -41,6 +41,7 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
 } from '@/utils/firebase';
+import Link from 'next/link';
 import { COLORS } from '../utils/palette';
 
 const { 
@@ -434,6 +435,10 @@ export default function Signup() {
                     >
                       Sign Up
                   </Button>
+
+                  <Link href="/Login">Already have an account? Log in</Link>
+                  <Link href="/Signup">Don't have an account? Sign up</Link>
+
                   <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                     <ModalOverlay />
                     <ModalContent>

@@ -32,6 +32,7 @@ import dynamic from "next/dynamic";
 import { COLORS } from '@/utils/palette';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firebaseApp } from '@/utils/firebase'; 
+import Link from 'next/link';
 
 const { 
   text, 
@@ -241,6 +242,9 @@ function Login() {
                         Log In
                       </Button>
                     </Flex>
+
+                    <Link href="/Login">Already have an account? Log in</Link>
+                    <Link href="/Signup">Don't have an account? Sign up</Link>
 
                   </Stack>
                 </Stack>
