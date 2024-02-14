@@ -437,7 +437,6 @@ export default function Signup() {
                   </Button>
 
                   <Link href="/Login">Already have an account? Log in</Link>
-                  <Link href="/Signup">Don't have an account? Sign up</Link>
 
                   <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                     <ModalOverlay />
@@ -470,4 +469,3 @@ export default function Signup() {
     </ChakraProvider>
   );
 }
-
