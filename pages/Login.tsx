@@ -243,7 +243,6 @@ function Login() {
                       </Button>
                     </Flex>
 
-                    <Link href="/Login">Already have an account? Log in</Link>
                     <Link href="/Signup">Don't have an account? Sign up</Link>
 
                   </Stack>
@@ -256,6 +255,6 @@ function Login() {
     );
   }
   
-  export default dynamic(() => Promise.resolve(Login), { ssr: false });
+  export default Login;
 
     
