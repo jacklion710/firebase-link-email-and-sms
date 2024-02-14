@@ -373,7 +373,7 @@ export default function Home() {
                     _hover={{ borderColor: primary, borderWidth: "2px" }}
                     _focus={{ borderColor: accent, borderWidth: '3px' }}
                     value={phoneNumber} 
-                    // type="tel" 
+                    onChange={(e) => setPhoneNumber(e.target.value)} 
                     onKeyDown={handleKeyPress}
                     borderColor="black"
                   />
