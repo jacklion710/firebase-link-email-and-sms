@@ -73,7 +73,7 @@ export default function Home() {
     const [isOptedInTexts, setIsOptedInTexts] = useState(true);
     const [emailSent, setEmailSent] = useState(false);
     const [passwordError, setPasswordError] = useState<string | null>(null);
-    const [isAgreed, setIsAgreed] = useState(false);
+    const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
     const [formError, setFormError] = useState('');
     const [signupSuccessMessage, setSignupSuccessMessage] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -87,7 +87,7 @@ export default function Home() {
         handleSignup();
       }
     };
-    
+
     const handleSignup = async () => {
       // Clear previous errors and validations
       setError(null);
@@ -99,7 +99,28 @@ export default function Home() {
         setFormError('Please fill in all required fields.');
         return;
       }
-        
+    
+      // Check if a phone number is given
+      if (phoneNumber) {
+        // Initialize phone number verification process
+        sendVerificationCode(phoneNumber);
+      } else {
+        // Proceed with the existing email and password signup process
+        createUserWithEmail();
+      }
+    };
+
+    function formatPhoneNumber(phoneNumber: string) {
+      // Basic validation for a 10-digit number
+      const cleanNumber = phoneNumber.replace(/\D/g, ''); // Remove non-numeric characters
+      if (cleanNumber.length === 10) {
+        return `+1${cleanNumber}`;
+      } else {
+        return null; // Or throw an error, based on your error handling
+      }
+    }
+
+    const createUserWithEmail = async () => {        
       try {
         // Create the user with email and password
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -147,11 +168,11 @@ export default function Home() {
       }
     };
 
-    // Invisible recaptcha
+    // recaptcha
     useEffect(() => {
       if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'request-otp', {
-          size: 'invisible',
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'normal',
           callback: (response: any) => {
             // Your callback logic here
           },
@@ -169,57 +190,33 @@ export default function Home() {
     }, [auth]); 
 
     const sendVerificationCode = (phoneNumber: string) => {
-      // Assuming 'auth' is correctly initialized Firebase Auth instance
-      const recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: (response: any) => {
-          // handle the verification
-        },
-      });
+      const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+      if (!formattedPhoneNumber) {
+        setError("Invalid phone number format.");
+        return;
+      }
     
-      signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier)
-        .then((confirmationResult: ConfirmationResult) => {
-          // SMS sent. Prompt user to enter the code
-          verify = confirmationResult;
-          setIsModalOpen(true); // Show the modal for code input
-        }).catch((error: Error) => {
-          // Handle errors here
+      signInWithPhoneNumber(auth, formattedPhoneNumber, window.recaptchaVerifier)
+        .then((confirmationResult) => {
+          // Store the confirmation result in state
+          setConfirmationResult(confirmationResult);
+          setIsModalOpen(true);
+        }).catch((error) => {
           setError(error.message);
         });
     };
 
-    async function handleFinalizeSignup() {
-      // Assuming user's email and password sign-up has been initiated before and you're finalizing the signup process here
-      try {
-        // You might save additional user info to Firestore, send a welcome email, or redirect the user to a different page
-        console.log("Signup finalized");
-    
-        // Redirect or show a success message
-        toast({
-          title: 'Signup Complete',
-          description: 'Your account has been successfully created.',
-          status: 'success',
-          duration: 9000,
-          isClosable: true,
-        });
-    
-        // Redirect the user or update the UI to reflect the successful signup
-      } catch (error) {
-        console.error("Failed to finalize signup", error);
-        setError("Failed to finalize the signup process.");
-      }
-    };
-
     const verifyCodeAndSignup = async (code: string) => {
+      if (!confirmationResult) {
+        setError("Verification process not initialized.");
+        return;
+      }
       try {
-        if (!verify) {
-          throw new Error("Verification process not initialized.");
-        }
-        const result = await verify.confirm(code);
-        console.log("SMS verification successful", result);
+        await confirmationResult.confirm(code);
+        console.log("SMS verification successful");
     
-        // Proceed with finalizing the signup process
-        handleFinalizeSignup();
+        // Proceed with creating the user or any other actions post-verification
+        createUserWithEmail();
       } catch (error) {
         console.error("Failed to verify the SMS code.", error);
         setError("Failed to verify the SMS code.");
@@ -380,7 +377,7 @@ export default function Home() {
                 </FormControl>
 
                 <div id="recaptcha-container"></div>
-                <div id="request-otp"></div>
+                {/* <div id="request-otp"></div> */}
                 
                 <FormControl id="password" isRequired>
                   <Flex align="center">
