@@ -2,62 +2,44 @@
 import {
   Flex,
   Box,
-  Checkbox,
   FormControl,
   FormLabel,
   Input,
-  InputGroup,
   HStack,
-  InputRightElement,
   Stack,
   Button,
-  Heading,
-  Text,
-  Link as ChakraLink,
-  ChakraProvider,
-  Tooltip,
-  IconButton,
   Modal,
   ModalOverlay,
   ModalContent,
-  ModalBody,
+  ModalHeader,
   ModalFooter,
+  ModalBody,
   ModalCloseButton,
-  Divider,
-  Center,
+  Input as ChakraInput,
+  Heading,
+  Text,
+  ChakraProvider,
   useToast
 } from '@chakra-ui/react';
-import { 
-  BsInfoSquare, 
-} from 'react-icons/bs'; 
-import Link from 'next/link';
 import { 
   useState, 
   useEffect 
 } from 'react';
 import { 
-  ViewIcon, 
-  ViewOffIcon 
-} from '@chakra-ui/icons';
-import dynamic from "next/dynamic";
-import { 
   createUserWithEmailAndPassword, 
-  onAuthStateChanged,
+  ConfirmationResult,
   User as FirebaseUser, 
   sendEmailVerification,
 } from 'firebase/auth';
 import { 
   doc, 
   setDoc, 
-  getDoc 
 } from 'firebase/firestore';
 import { 
   db, 
   auth, 
-  collection, 
-  getDocs, 
-  query, 
-  where,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
 } from '@/utils/firebase';
 import { COLORS } from '../utils/palette';
 
@@ -94,8 +76,11 @@ export default function Home() {
     const [isAgreed, setIsAgreed] = useState(false);
     const [formError, setFormError] = useState('');
     const [signupSuccessMessage, setSignupSuccessMessage] = useState('');
-    const toast = useToast();
     const [phoneNumber, setPhoneNumber] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [verificationCode, setVerificationCode] = useState('');
+    const toast = useToast();
+    let verify: ConfirmationResult | null = null;
 
     const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'Enter') {
@@ -106,24 +91,17 @@ export default function Home() {
     const handleSignup = async () => {
       // Clear previous errors and validations
       setError(null);
-      setFormError('');
       setPasswordError(null);
-    };
-
-    const handleFinalizeSignup = async () => {
-      if (!isAgreed) {
-        toast({
-            title: "Terms of Service",
-            description: "You must agree to the Terms of Service to sign up.",
-            status: "error",
-            duration: 9000,
-            isClosable: true,
-        });
+      setFormError('');
+    
+      // Basic validation for demonstration purposes
+      if (!email || !password || !firstName || !username) {
+        setFormError('Please fill in all required fields.');
         return;
       }
-
+        
       try {
-        // Create the user
+        // Create the user with email and password
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         console.log("User created with email and password", userCredential.user);
     
@@ -133,13 +111,13 @@ export default function Home() {
           lastName: lastName,
           username: username,
           email: email,
-          phoneNumber: phoneNumber,
+          phoneNumber: phoneNumber, // Make sure to validate or format this as needed
           isOptedIn: isOptedIn,
           isOptedInTexts: isOptedInTexts,
           StageProgress: {
-            TilePuzzle: false // Initialize TilePuzzle as false
+            TilePuzzle: false // Initialize TilePuzzle as false or any other initial state you need
           },
-          isAdmin: false 
+          isAdmin: false // or any other flags you need
         };
         const userDocRef = doc(db, 'users', userCredential.user.uid);
         await setDoc(userDocRef, userData, { merge: true });
@@ -150,25 +128,103 @@ export default function Home() {
         setEmailSent(true);
         setSignupSuccessMessage("Account created successfully. Please check your email for verification.");
     
-        // Display a combined toast message for account creation and email verification
+        // Display a success message or redirect the user to another page
         toast({
           title: 'Account Created Successfully',
           description: 'Please verify your email. You will be redirected to the profile page. Verify your email and refresh the page',
           status: 'success',
-          duration: 15000,
+          duration: 9000,
           isClosable: true,
         });
-
       } catch (error) {
         if (error instanceof Error) {
-          // Handle errors
+          // Handle specific Firebase errors (e.g., weak password, email already in use)
           console.error("Error during signup process", error);
           setError(error.message || "An unknown error occurred during signup.");
-        } else { 
+        } else {
           setError("An unknown error occurred during signup.");
         }
       }
     };
+
+    // Invisible recaptcha
+    useEffect(() => {
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'request-otp', {
+          size: 'invisible',
+          callback: (response: any) => {
+            // Your callback logic here
+          },
+          'expired-callback': () => {
+            console.log('expired');
+          },
+          'error-callback': (error: any) => {
+            console.log(error);
+          }
+        });
+        window.recaptchaVerifier.render().catch((error: any) => {
+          console.error("Error rendering reCAPTCHA: ", error);
+        });
+      }
+    }, [auth]); 
+
+    const sendVerificationCode = (phoneNumber: string) => {
+      // Assuming 'auth' is correctly initialized Firebase Auth instance
+      const recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: (response: any) => {
+          // handle the verification
+        },
+      });
+    
+      signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier)
+        .then((confirmationResult: ConfirmationResult) => {
+          // SMS sent. Prompt user to enter the code
+          verify = confirmationResult;
+          setIsModalOpen(true); // Show the modal for code input
+        }).catch((error: Error) => {
+          // Handle errors here
+          setError(error.message);
+        });
+    };
+
+    async function handleFinalizeSignup() {
+      // Assuming user's email and password sign-up has been initiated before and you're finalizing the signup process here
+      try {
+        // You might save additional user info to Firestore, send a welcome email, or redirect the user to a different page
+        console.log("Signup finalized");
+    
+        // Redirect or show a success message
+        toast({
+          title: 'Signup Complete',
+          description: 'Your account has been successfully created.',
+          status: 'success',
+          duration: 9000,
+          isClosable: true,
+        });
+    
+        // Redirect the user or update the UI to reflect the successful signup
+      } catch (error) {
+        console.error("Failed to finalize signup", error);
+        setError("Failed to finalize the signup process.");
+      }
+    };
+
+    const verifyCodeAndSignup = async (code: string) => {
+      try {
+        if (!verify) {
+          throw new Error("Verification process not initialized.");
+        }
+        const result = await verify.confirm(code);
+        console.log("SMS verification successful", result);
+    
+        // Proceed with finalizing the signup process
+        handleFinalizeSignup();
+      } catch (error) {
+        console.error("Failed to verify the SMS code.", error);
+        setError("Failed to verify the SMS code.");
+      }
+    };    
     
     return (
       <ChakraProvider>
@@ -302,7 +358,7 @@ export default function Home() {
 
                 <FormControl id="phone">
                   <Flex align="center">
-                    <FormLabel color={secondaryText} fontFamily="'Kdam Thmor Pro', sans-serif">Phone Number (Optional)</FormLabel>
+                    <FormLabel color={secondaryText} fontFamily="'Kdam Thmor Pro', sans-serif">Phone Number</FormLabel>
                   </Flex>
                   <Input 
                     fontFamily="'Kdam Thmor Pro', sans-serif"
@@ -317,12 +373,15 @@ export default function Home() {
                     _hover={{ borderColor: primary, borderWidth: "2px" }}
                     _focus={{ borderColor: accent, borderWidth: '3px' }}
                     value={phoneNumber} 
-                    type="tel" 
+                    // type="tel" 
                     onKeyDown={handleKeyPress}
                     borderColor="black"
                   />
                 </FormControl>
 
+                <div id="recaptcha-container"></div>
+                <div id="request-otp"></div>
+                
                 <FormControl id="password" isRequired>
                   <Flex align="center">
                     <FormLabel color={secondaryText} fontFamily="'Kdam Thmor Pro', sans-serif">Password</FormLabel>
@@ -378,6 +437,29 @@ export default function Home() {
                     >
                       Sign Up
                   </Button>
+                  <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+                    <ModalOverlay />
+                    <ModalContent>
+                      <ModalHeader>Enter Verification Code</ModalHeader>
+                      <ModalCloseButton />
+                      <ModalBody>
+                        <FormControl id="verification-code" isRequired>
+                          <FormLabel>Verification Code</FormLabel>
+                          <ChakraInput
+                            placeholder="123456"
+                            value={verificationCode}
+                            onChange={(e) => setVerificationCode(e.target.value)}
+                          />
+                        </FormControl>
+                      </ModalBody>
+                      <ModalFooter>
+                        <Button colorScheme="blue" mr={3} onClick={() => verifyCodeAndSignup(verificationCode)}>
+                          Verify
+                        </Button>
+                        <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                      </ModalFooter>
+                    </ModalContent>
+                  </Modal>
                 </Stack>
               </Stack>
             </Box>
