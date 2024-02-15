@@ -1,23 +1,23 @@
 # SMS Authentication Linking with Email in Firebase
 
-...
+This is a work in progress. If anyone would like to contribute please feel free. The goal is to be able to verify users emails and phone numbers when authenticating using firebase. I tried using linkWithCredential() but received an error regarding the authentication token expiring. I tried following the documentation on [linking](https://firebase.google.com/docs/auth/web/account-linking?authuser=0) but this is where I got stuck. There isn't a lot of coverage of this online which is why I wantd to take a crack at it.
 
 ## About the Project
 
-...
+Users verify their phone mumber, handle verification success, link email and password to phone  and send an email verification as well as save user data in firestore.
 
 ## Key Features
 
-...
-
-## Getting Started
-
-To get this project up and running on your local machine, follow these steps:
+SMS & email authentication.
 
 ## Prerequisites
 
 Node.js installed on your system
 A Firebase project for accessing Firebase services
+
+## Getting Started
+
+To get this project up and running on your local machine, follow these steps:
 
 ## Installation
 
