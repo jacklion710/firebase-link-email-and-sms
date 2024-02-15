@@ -30,6 +30,11 @@ import {
   ConfirmationResult,
   User as FirebaseUser, 
   sendEmailVerification,
+  PhoneAuthProvider,
+  signInWithCredential,
+  signInWithPhoneNumber,
+  linkWithCredential,
+  RecaptchaVerifier
 } from 'firebase/auth';
 import { 
   doc, 
@@ -37,10 +42,8 @@ import {
 } from 'firebase/firestore';
 import { 
   db, 
-  auth, 
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-} from '@/utils/firebase';
+  auth,
+} from '../utils/firebase';
 import Link from 'next/link';
 import { COLORS } from '../utils/palette';
 
@@ -81,7 +84,6 @@ export default function Signup() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [verificationCode, setVerificationCode] = useState('');
     const toast = useToast();
-    let verify: ConfirmationResult | null = null;
 
     const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'Enter') {
@@ -89,24 +91,21 @@ export default function Signup() {
       }
     };
 
-    const handleSignup = async () => {
-      // Clear previous errors and validations
+    const handleSignup = () => {
       setError(null);
       setPasswordError(null);
       setFormError('');
     
-      // Basic validation for demonstration purposes
       if (!email || !password || !firstName || !username) {
         setFormError('Please fill in all required fields.');
         return;
       }
     
-      // Check if a phone number is given
+      // If phone number is provided, start with phone verification
       if (phoneNumber) {
-        // Initialize phone number verification process
         sendVerificationCode(phoneNumber);
       } else {
-        // Proceed with the existing email and password signup process
+        // If no phone number, directly create user with email and password
         createUserWithEmail();
       }
     };
@@ -121,52 +120,55 @@ export default function Signup() {
       }
     }
 
-    const createUserWithEmail = async () => {        
+    const createUserWithEmail = async () => {
       try {
-        // Create the user with email and password
+        // Proceed to create the user with email and password
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         console.log("User created with email and password", userCredential.user);
-    
-        // Save user data to Firestore
-        const userData = {
-          firstName: firstName,
-          lastName: lastName,
-          username: username,
-          email: email,
-          phoneNumber: phoneNumber, // Make sure to validate or format this as needed
-          isOptedIn: isOptedIn,
-          isOptedInTexts: isOptedInTexts,
-          StageProgress: {
-            TilePuzzle: false // Initialize TilePuzzle as false or any other initial state you need
-          },
-          isAdmin: false // or any other flags you need
-        };
-        const userDocRef = doc(db, 'users', userCredential.user.uid);
-        await setDoc(userDocRef, userData, { merge: true });
-        console.log("User data successfully saved to Firestore");
     
         // Send email verification
         await sendEmailVerification(userCredential.user);
         setEmailSent(true);
-        setSignupSuccessMessage("Account created successfully. Please check your email for verification.");
     
-        // Display a success message or redirect the user to another page
-        toast({
-          title: 'Account Created Successfully',
-          description: 'Please verify your email. You will be redirected to the profile page. Verify your email and refresh the page',
-          status: 'success',
-          duration: 9000,
-          isClosable: true,
-        });
+        // Save user data to Firestore including the phone number
+        await saveUserData(userCredential.user, true);
+    
+        // Link phone number to the email account if phone verification was done
+        if (phoneNumber && auth.currentUser && confirmationResult) {
+          // Ensure confirmationResult is not null before accessing it
+          const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, verificationCode);
+          await linkWithCredential(auth.currentUser, credential);
+          console.log("Phone number linked to user account");
+        } else {
+          console.error("Cannot link phone number: confirmationResult or currentUser is null.");
+          setError("Failed to link phone number due to missing confirmation result or current user.");
+        }
       } catch (error) {
         if (error instanceof Error) {
-          // Handle specific Firebase errors (e.g., weak password, email already in use)
-          console.error("Error during signup process", error);
-          setError(error.message || "An unknown error occurred during signup.");
-        } else {
-          setError("An unknown error occurred during signup.");
+          console.error("Error during account creation:", error);
+          setError(error.message || "An unknown error occurred during account creation.");
         }
       }
+    };   
+
+    const saveUserData = async (user: FirebaseUser, includePhone = true) => {
+      const userData = {
+        firstName: firstName,
+        lastName: lastName,
+        username: username,
+        email: email,
+        phoneNumber: includePhone ? phoneNumber : null,
+        isOptedIn: isOptedIn,
+        isOptedInTexts: isOptedInTexts,
+        StageProgress: {
+          TilePuzzle: false
+        },
+        isAdmin: false
+      };
+    
+      const userDocRef = doc(db, 'users', user.uid);
+      await setDoc(userDocRef, userData, { merge: true });
+      console.log("User data successfully saved to Firestore");
     };
 
     // recaptcha
@@ -212,17 +214,19 @@ export default function Signup() {
         setError("Verification process not initialized.");
         return;
       }
-      try {
-        await confirmationResult.confirm(code);
-        console.log("SMS verification successful");
     
-        // Proceed with creating the user or any other actions post-verification
-        createUserWithEmail();
+      try {
+        const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, code);
+        // Sign in with the temporary phone credential
+        const response = await signInWithCredential(auth, credential);
+    
+        // After phone auth, create email/password account and link it
+        createUserWithEmail(); // Now this function needs to handle linking phone with email
       } catch (error) {
-        console.error("Failed to verify the SMS code.", error);
-        setError("Failed to verify the SMS code.");
+        console.error("Error verifying code:", error);
+        setError("Failed to verify code.");
       }
-    };    
+    };
     
     return (
       <ChakraProvider>
